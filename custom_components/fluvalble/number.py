@@ -18,12 +18,12 @@ async def async_setup_entry(
 class FluvalNumber(FluvalEntity, NumberEntity):
     def internal_update(self):
         # TODO: Value update
-        #        attribute = self.device.attribute(self.attr)
-        #        self._attr_available = "value" in attribute
-        #        self._attr_native_min_value = attribute.get("min")
-        #        self._attr_native_max_value = attribute.get("max")
-        #        self._attr_native_step = attribute.get("step")
-        #        self._attr_native_value = attribute.get("value")
+        attribute = self.device.attribute(self.attr)
+        self._attr_available = "value" in attribute
+        self._attr_native_min_value = attribute.get("min")
+        self._attr_native_max_value = attribute.get("max")
+        self._attr_native_step = attribute.get("step")
+        self._attr_native_value = attribute.get("value")
 
         if self.hass:
             self._async_write_ha_state()

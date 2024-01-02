@@ -14,7 +14,7 @@ from .core.device import Device
 
 # TODO List the platforms that you want to support.
 # For your initial PR, limit it to 1 platform.
-PLATFORMS: list[Platform] = [Platform.NUMBER]
+PLATFORMS: list[Platform] = [Platform.NUMBER, Platform.BINARY_SENSOR, Platform.SELECT]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -29,8 +29,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         service_info: bluetooth.BluetoothServiceInfoBleak,
         change: bluetooth.BluetoothChange,
     ) -> None:
-        logging.info("Service Device: " + str(service_info.device))
-        logging.info("Service Advertisement: " + str(service_info.advertisement))
+        logging.info("XXX Service Device: " + str(service_info.device))
+        logging.info("XXX Service Advertisement: " + str(service_info.advertisement))
         if device := devices.get(entry.entry_id):
             device.update_ble(service_info)
             return
