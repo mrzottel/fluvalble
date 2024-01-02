@@ -7,28 +7,30 @@ from homeassistant.components import bluetooth
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.const import CONF_MAC
 
 from .core import DOMAIN
 from .core.device import Device
 
 # TODO List the platforms that you want to support.
 # For your initial PR, limit it to 1 platform.
-PLATFORMS: list[Platform] = [Platform.LIGHT]
+PLATFORMS: list[Platform] = [Platform.NUMBER]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Fluval Aquarium LED from a config entry."""
     devices = hass.data.setdefault(DOMAIN, {})
+    logging.debug("Entry ID: " + entry.entry_id)
+    logging.debug("Entry Title: " + entry.title)
+    logging.debug("Entry Conf_mac: " + str(entry.data[CONF_MAC]))
 
     @callback
     def update_ble(
         service_info: bluetooth.BluetoothServiceInfoBleak,
         change: bluetooth.BluetoothChange,
     ) -> None:
-        logging.debug(entry.entry_id)
-        logging.debug(entry.title)
-        logging.debug(service_info.device)
-        logging.debug(service_info.advertisement)
+        logging.info("Service Device: " + str(service_info.device))
+        logging.info("Service Advertisement: " + str(service_info.advertisement))
         if device := devices.get(entry.entry_id):
             device.update_ble(service_info)
             return
@@ -46,7 +48,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         bluetooth.async_register_callback(
             hass,
             update_ble,
-            {"address": entry.data["mac"], "manufacturer_id": 171, "connectable": True},
+            {"address": entry.data[CONF_MAC]},
             bluetooth.BluetoothScanningMode.ACTIVE,
         )
     )

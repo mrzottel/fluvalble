@@ -8,6 +8,7 @@
   "dependencies": [
     "bluetooth_adapters"
   ],
+  "integration_type" : "device",
   "documentation": "https://www.home-assistant.io/integrations/fluvalble",
   "homekit": {},
   "iot_class": "local_polling",
