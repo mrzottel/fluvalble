@@ -35,14 +35,15 @@ class Device:
         self.conn_info = {"mac": device.address}
         self.updates_connect: list = []
         self.updates_component: list = []
-        self.channel_1 = 0
-        self.channel_2 = 0
-        self.channel_3 = 0
-        self.channel_4 = 0
-        self.channel_5 = 0
-        self.mode = ""
-        self.led_on = False
+        self.values = {}
         self.update_ble(advertisment)
+        self.values["channel_1"] = 0
+        self.values["channel_2"] = 0
+        self.values["channel_3"] = 0
+        self.values["channel_4"] = 0
+        self.values["channel_5"] = 0
+        self.values["mode"] = "manual"
+        self.values["led_on_off"] = False
 
     @property
     def mac(self) -> str:
@@ -71,18 +72,12 @@ class Device:
         _LOGGER.debug("XXX -> attr: " + attr)
         if attr == "connection":
             return Attribute(is_on=self.connected, extra=self.conn_info)
-        if attr == "channel_1":
-            return Attribute(min=0, max=1000, step=50, value=self.channel_1)
-        if attr == "channel_2":
-            return Attribute(min=0, max=1000, step=50, value=self.channel_2)
-        if attr == "channel_3":
-            return Attribute(min=0, max=1000, step=50, value=self.channel_3)
-        if attr == "channel_4":
-            return Attribute(min=0, max=1000, step=50, value=self.channel_4)
-        if attr == "channel_5":
-            return Attribute(min=0, max=1000, step=50, value=self.channel_5)
+        if attr.startswith("channel_"):
+            return Attribute(min=0, max=1000, step=50, value=self.values[attr])
         if attr == "mode":
-            return Attribute(options=MODES, default=self.mode)
+            return Attribute(options=MODES, default=self.values[attr])
+        if attr == "led_on_off":
+            return Attribute(is_on=self.values[attr])
 
     def register_update(self, attr: str, handler: Callable):
         if attr == "connection":
@@ -90,39 +85,44 @@ class Device:
         else:
             self.updates_component.append(handler)
 
+    def set_value(self, attr: str, value: int):
+        _LOGGER.debug("Value " + attr + " changed to " + str(value))
+        self.values[attr] = value
+
     def decode_update_packet(self, data: bytearray):
         if data[2] == 0x00:
-            self.mode = MODES[0]
+            self.values["mode"] = MODES[0]
         elif data[2] == 0x01:
-            self.mode = MODES[1]
+            self.values["mode"] = MODES[1]
         elif data[2] == 0x02:
-            self.mode = MODES[2]
+            self.values["mode"] = MODES[2]
 
-        self.led_on = data[3] > 0x00
-        if self.mode == "manual":
-            self.channel_1 = (data[6] << 8) | (data[5] & 0xFF)
-            self.channel_2 = (data[8] << 8) | (data[7] & 0xFF)
-            self.channel_3 = (data[10] << 8) | (data[9] & 0xFF)
-            self.channel_4 = (data[12] << 8) | (data[11] & 0xFF)
+        self.values["led_on_off"] = data[3] > 0x00
+
+        if self.values["mode"] == "manual":
+            self.values["channel_1"] = (data[6] << 8) | (data[5] & 0xFF)
+            self.values["channel_2"] = (data[8] << 8) | (data[7] & 0xFF)
+            self.values["channel_3"] = (data[10] << 8) | (data[9] & 0xFF)
+            self.values["channel_4"] = (data[12] << 8) | (data[11] & 0xFF)
         else:
-            self.channel_1 = 0
-            self.channel_2 = 0
-            self.channel_3 = 0
-            self.channel_4 = 0
+            self.values["channel_1"] = 0
+            self.values["channel_2"] = 0
+            self.values["channel_3"] = 0
+            self.values["channel_4"] = 0
 
         _LOGGER.debug(
             "led: "
-            + str(self.led_on)
+            + str(self.values["led_on_off"])
             + " mode: "
-            + str(self.mode)
+            + str(self.values["mode"])
             + " channels: "
-            + str(self.channel_1)
+            + str(self.values["channel_1"])
             + " / "
-            + str(self.channel_2)
+            + str(self.values["channel_2"])
             + " / "
-            + str(self.channel_3)
+            + str(self.values["channel_3"])
             + " / "
-            + str(self.channel_4)
+            + str(self.values["channel_4"])
         )
 
         for handler in self.updates_component:

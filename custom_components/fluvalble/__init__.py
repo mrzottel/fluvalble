@@ -14,7 +14,12 @@ from .core.device import Device
 
 # TODO List the platforms that you want to support.
 # For your initial PR, limit it to 1 platform.
-PLATFORMS: list[Platform] = [Platform.NUMBER, Platform.BINARY_SENSOR, Platform.SELECT]
+PLATFORMS: list[Platform] = [
+    Platform.NUMBER,
+    Platform.BINARY_SENSOR,
+    Platform.SELECT,
+    Platform.SWITCH,
+]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

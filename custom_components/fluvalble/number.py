@@ -17,7 +17,6 @@ async def async_setup_entry(
 
 class FluvalNumber(FluvalEntity, NumberEntity):
     def internal_update(self):
-        # TODO: Value update
         attribute = self.device.attribute(self.attr)
         self._attr_available = "value" in attribute
         self._attr_native_min_value = attribute.get("min")
