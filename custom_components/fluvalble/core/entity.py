@@ -1,15 +1,19 @@
+"""Base entity of a Fluval BLE connected LED device for home assistant."""
+
 from homeassistant.helpers.device_registry import CONNECTION_NETWORK_MAC
-from homeassistant.helpers.entity import DeviceInfo
-from homeassistant.helpers.entity import Entity
+from homeassistant.helpers.entity import DeviceInfo, Entity
 
 from . import DOMAIN
 from .device import Device
 
 
 class FluvalEntity(Entity):
+    """Base entity class."""
+
     _attr_should_poll = False
 
-    def __init__(self, device: Device, attr: str):
+    def __init__(self, device: Device, attr: str) -> None:
+        """Initialize the entity."""
         self.device = device
         self.attr = attr
 
@@ -30,4 +34,5 @@ class FluvalEntity(Entity):
         device.register_update(attr, self.internal_update)
 
     def internal_update(self):
+        """Provide a function for internal updates."""
         pass

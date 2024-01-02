@@ -1,7 +1,9 @@
-from datetime import datetime, timezone
-from typing import TypedDict, Callable
+"""A single Fluval BLE connected LED device."""
 
+from collections.abc import Callable
+from datetime import UTC, datetime
 import logging
+from typing import TypedDict
 
 from bleak import AdvertisementData, BLEDevice
 
@@ -15,6 +17,8 @@ MODES = ["manual", "automatic", "professional"]
 
 
 class Attribute(TypedDict, total=False):
+    """Attributes used by enitites like binary_sensor and number."""
+
     options: list[str]
     default: str
 
@@ -28,7 +32,12 @@ class Attribute(TypedDict, total=False):
 
 
 class Device:
-    def __init__(self, name: str, device: BLEDevice, advertisment: AdvertisementData):
+    """Fluval BLE LED device class."""
+
+    def __init__(
+        self, name: str, device: BLEDevice, advertisment: AdvertisementData
+    ) -> None:
+        """Initialize the device."""
         self.name = name
         self.client = Client(device, self.set_connected, self.decode_update_packet)
         self.connected = False
@@ -47,29 +56,35 @@ class Device:
 
     @property
     def mac(self) -> str:
+        """Expose the MAC address of the device."""
         return self.client.device.address
 
     def update_ble(self, advertisment: AdvertisementData):
-        self.conn_info["last_seen"] = datetime.now(timezone.utc)
+        """Update BLE metadata."""
+        self.conn_info["last_seen"] = datetime.now(UTC)
         self.conn_info["rssi"] = advertisment.rssi
 
         for handler in self.updates_connect:
             handler()
 
     def set_connected(self, connected: bool):
+        """Set the connection status."""
         self.connected = connected
 
         for handler in self.updates_connect:
             handler()
 
     def numbers(self) -> list[str]:
+        """List of numbers provided by the device."""
         return list(NUMBERS)
 
     def selects(self) -> list[str]:
+        """List of select boxes provided by the device."""
         return list(SELECTS)
 
     def attribute(self, attr: str) -> Attribute:
-        _LOGGER.debug("XXX -> attr: " + attr)
+        """Provide attributes to the entities like switches, numbers etc."""
+        _LOGGER.debug("XXX -> attr: %s", attr)
         if attr == "connection":
             return Attribute(is_on=self.connected, extra=self.conn_info)
         if attr.startswith("channel_"):
@@ -80,16 +95,19 @@ class Device:
             return Attribute(is_on=self.values[attr])
 
     def register_update(self, attr: str, handler: Callable):
+        """Register handlers for updates."""
         if attr == "connection":
             self.updates_connect.append(handler)
         else:
             self.updates_component.append(handler)
 
     def set_value(self, attr: str, value: int):
-        _LOGGER.debug("Value " + attr + " changed to " + str(value))
+        """Set values received by entities such as numbers and switches."""
+        _LOGGER.debug("Value %s changed to %s ", attr, str(value))
         self.values[attr] = value
 
     def decode_update_packet(self, data: bytearray):
+        """Decode the received Fluval packet and sort into values."""
         if data[2] == 0x00:
             self.values["mode"] = MODES[0]
         elif data[2] == 0x01:

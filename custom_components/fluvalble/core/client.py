@@ -1,9 +1,12 @@
+"""Client class connecting the Fluval BLE Entity to a bluetooth connection."""
+
 import asyncio
+from collections.abc import Callable
+import contextlib
 import logging
 import time
-from typing import Callable
 
-from bleak import BleakClient, BleakError, BLEDevice, BleakGATTCharacteristic
+from bleak import BleakClient, BleakError, BleakGATTCharacteristic, BLEDevice
 from bleak_retry_connector import establish_connection
 
 from . import encryption
@@ -15,12 +18,15 @@ COMMAND_TIME = 15
 
 
 class Client:
+    """Basic client handling BLE sending and callbacks."""
+
     def __init__(
         self,
         device: BLEDevice,
         status_callback: Callable = None,
         update_callback: Callable = None,
-    ):
+    ) -> None:
+        """Initialize the client."""
         self.device = device
         self.status_callback = status_callback
         self.update_callback = update_callback
@@ -38,21 +44,24 @@ class Client:
         self.receive_buffer = b""
 
     def ping(self):
+        """Start the ping task to periodically talk to the Fluval."""
         self.ping_time = time.time() + ACTIVE_TIME
 
         if not self.ping_task:
             self.ping_task = asyncio.create_task(self._ping_loop())
 
     def notify_callback(self, sender: BleakGATTCharacteristic, data: bytearray):
+        """Handle packets sent by the Fluval."""
         decrypted = decrypt(data)
         if len(decrypted) == 17:
             self.receive_buffer += decrypted
         else:
-            _LOGGER.debug("Got all data: " + to_hex(self.receive_buffer))
+            _LOGGER.debug("Got all data: %s ", to_hex(self.receive_buffer))
             self.update_callback(self.receive_buffer)
             self.receive_buffer = b""
 
     async def _connect(self):
+        """Connect to the Fluval and subscribe to notifications."""
         self.client = await establish_connection(
             BleakClient, self.device, self.device.address
         )
@@ -65,9 +74,7 @@ class Client:
             self.status_callback(True)
 
         # Step 0
-        step_zero = await self.client.read_gatt_char(
-            "00001004-0000-1000-8000-00805F9B34FB"
-        )
+        await self.client.read_gatt_char("00001004-0000-1000-8000-00805F9B34FB")
 
         # Step 1
 
@@ -78,6 +85,7 @@ class Client:
         )
 
     def send(self, data: bytes):
+        """Send a packet to the Fluval."""
         # if send loop active - we change sending data
         self.send_time = time.time() + COMMAND_TIME
         self.send_data = data
@@ -88,11 +96,11 @@ class Client:
             self.ping_future.cancel()
 
     async def _ping_loop(self):
-        _LOGGER.info("XXX in ping loop")
+        """Ping the Fluval to keep connection."""
+        # TODO: Set current time instead of dummy packet
         loop = asyncio.get_event_loop()
         while time.time() < self.ping_time or True:
             try:
-                _LOGGER.info("XXX in ping loop WHILE")
                 self.client = await establish_connection(
                     BleakClient, self.device, self.device.address
                 )
@@ -102,10 +110,9 @@ class Client:
                 # heartbeat loop
                 while time.time() < self.ping_time or True:
                     # important dummy read for keep connection
-                    data = await self.client.read_gatt_char(
+                    await self.client.read_gatt_char(
                         "00001004-0000-1000-8000-00805F9B34FB"
                     )
-                    _LOGGER.info("XXX in heartbeat loop -> " + to_hex(data))
                     if self.send_data:
                         if time.time() < self.send_time:
                             await self.client.write_gatt_char(
@@ -118,10 +125,8 @@ class Client:
                     # asyncio.sleep(10) with cancel
                     self.ping_future = loop.create_future()
                     loop.call_later(10, self.ping_future.cancel)
-                    try:
+                    with contextlib.suppress(asyncio.CancelledError):
                         await self.ping_future
-                    except asyncio.CancelledError:
-                        pass
 
                 await self.client.disconnect()
             except TimeoutError:
@@ -140,13 +145,16 @@ class Client:
 
 
 def encrypt(data: bytearray) -> bytearray:
+    """Encrypt a packet for sending to Fluval."""
     data = encryption.add_crc(data)
     return encryption.encrypt(data)
 
 
 def decrypt(data: bytearray) -> bytearray:
+    """Decrypt a packet that has been received by the Fluval."""
     return encryption.decrypt(data)
 
 
 def to_hex(data: bytes) -> str:
+    """Print a byte array as hex strings for debugging."""
     return " ".join(format(x, "02x") for x in data)

@@ -1,7 +1,4 @@
 """Encrypts/decrypts BLE packets for the fluval LED controller."""
-import logging
-
-_LOGGER = logging.getLogger(__name__)
 
 
 def encrypt(source: bytearray) -> bytearray:
@@ -25,6 +22,7 @@ def decrypt(source: bytearray | bytearray) -> bytes:
 
 
 def add_crc(source: bytearray) -> bytes:
+    """Calculate CRC for the packet."""
     crc = 0x0
     for b in source:
         crc = b ^ crc
